@@ -21,20 +21,27 @@ using Microsoft.Win32;
 
 namespace CodServerCache
 {
+    /// <summary>
+    ///     Represents a Call of Duty 4: Modern Warfare servercache.dat file.
+    /// </summary>
     public class Cod4ServerCache
     {
-        public const int ServerSize = 0x9c;//156
-
+        public const int ServerSize = 0x9c; //156
         private const int HeaderSize = 0x10;
-        private const int FileSize = 0x2fe990;//3 139 984 (- 16 == 20 128)
-        private const int FavoritesOffset = 0x2f9b90;//3 120 016 (- 16 == 20 000)
-        private const int ServerCount = (FavoritesOffset - HeaderSize) / ServerSize;
-        private const int FavoriteServerCount = (FileSize - FavoritesOffset) / ServerSize;
-
+        private const int FileSize = 0x2fe990; //3 139 984 (- 16 == 20 128)
+        private const int FavoritesOffset = 0x2f9b90; //3 120 016 (- 16 == 20 000)
+        private const int ServerCount = (FavoritesOffset - HeaderSize)/ServerSize;
+        private const int FavoriteServerCount = (FileSize - FavoritesOffset)/ServerSize;
         // fav sec 19968 (== 128 x struct)
 
         private readonly byte[] _contents;
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="Cod4ServerCache" /> class.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <exception cref="ArgumentNullException">Thrown if path is null</exception>
+        /// <exception cref="ArgumentException">Thrown if path not found or invalid file size</exception>
         public Cod4ServerCache(string path)
         {
             if (path == null) throw new ArgumentNullException(nameof(path));
@@ -46,33 +53,48 @@ namespace CodServerCache
             _contents = contents;
         }
 
+        /// <summary>
+        ///     Gets the path.
+        /// </summary>
         public string Path { get; }
 
-        public IEnumerable<Cod4ServerData> Servers => Split(HeaderSize, ServerCount).Select(ToServer).Distinct();
-        public IEnumerable<Cod4ServerData> FavoriteServers => Split(FavoritesOffset, FavoriteServerCount).Select(ToServer).Distinct();
+        /// <summary>
+        ///     Gets the servers.
+        /// </summary>
+        public IEnumerable<Cod4Server> Servers => Split(HeaderSize, ServerCount).Select(ToServer).Distinct();
+
+        /// <summary>
+        ///     Gets the favorite servers.
+        /// </summary>
+        public IEnumerable<Cod4Server> FavoriteServers
+            => Split(FavoritesOffset, FavoriteServerCount).Select(ToServer).Distinct();
 
         private IEnumerable<byte[]> Split(int startIndex, int count)
         {
             for (var i = 0; i < count; i++)
             {
-                if (IsEmptyRecord(_contents, startIndex + ServerSize * i))
+                if (IsEmptyRecord(_contents, startIndex + ServerSize*i))
                     continue;
 
-                yield return _contents.Skip(startIndex).Skip(ServerSize * i).Take(ServerSize).ToArray();
+                yield return _contents.Skip(startIndex).Skip(ServerSize*i).Take(ServerSize).ToArray();
             }
-        } 
+        }
 
-        private static Cod4ServerData ToServer(byte[] data)
+        private static Cod4Server ToServer(byte[] data)
         {
-            return new Cod4ServerData(GetString(data, 0x31, 0x20),
+            return new Cod4Server(GetString(data, 0x31, 0x20),
                 $"{string.Join(".", data.Skip(0x04).Take(0x04))}:{BitConverter.ToUInt16(data.Skip(0x08).Take(0x02).Reverse().ToArray(), 0)}",
                 GetString(data, 0x51, 0x20), GetString(data, 0x71, 0x18), GetString(data, 0x89, 0x13), data[0x19],
                 data[0x1a]);
         }
 
+        /// <summary>
+        ///     Detects the cache file of the installed copy of Call of Duty 4: Modern Warfare.
+        /// </summary>
+        /// <returns>An instance of <see cref="Cod4ServerCache" /> or null if the game or servercache could not be found.</returns>
         public static Cod4ServerCache DetectCache()
         {
-            string path =
+            var path =
                 Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Activision\\Call of Duty 4", "InstallPath", null)?
                     .ToString() ??
                 Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Activision\\Call of Duty 4", "InstallPath",
@@ -83,7 +105,7 @@ namespace CodServerCache
 
             return !File.Exists(path) ? null : new Cod4ServerCache(path);
         }
-        
+
         private static bool IsEmptyRecord(byte[] data, int index)
         {
             return data.Length < index + ServerSize ||
@@ -94,7 +116,7 @@ namespace CodServerCache
         private static string GetString(IEnumerable<byte> bytes, int index, int length)
         {
             var result = string.Empty;
-            foreach(var b in bytes.Skip(index).Take(length))
+            foreach (var b in bytes.Skip(index).Take(length))
             {
                 if (b == 0x00)
                     return result;
