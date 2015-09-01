@@ -26,6 +26,8 @@ namespace CodServerCache.Debugging
 
             Console.WriteLine($"0x{BitConverter.ToString(cache.Header.Take(0x31).ToArray()).Replace("-", "")}");
             
+            foreach(var s in cache.FavoriteServers)
+                Console.WriteLine(s);
             Console.ReadLine();
         }
     }

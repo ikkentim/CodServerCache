@@ -65,7 +65,7 @@ namespace CodServerCache
             =>
                 Enumerable.Range(0, PublicServerCount)
                     .Select(index => new Cod4CachedServer(_data, PublicServerOffset + index*Cod4CachedServer.Size))
-                    .Where(server => !server.IsPinged);
+                    .Where(server => server.IsPinged);
 
         /// <summary>
         ///     Gets the favorite servers.
@@ -74,7 +74,7 @@ namespace CodServerCache
             =>
                 Enumerable.Range(0, Math.Min(FavoriteServerCount, (int)_data[0x08]))
                     .Select(index => new Cod4CachedServer(_data, FavoriteServerOffset + index * Cod4CachedServer.Size))
-                    .Where(server => !server.IsPinged);
+                    .Where(server => server.IsPinged);
 
         /// <summary>
         ///     Detects the cache file of the installed copy of Call of Duty 4: Modern Warfare.
