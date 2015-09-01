@@ -55,12 +55,12 @@ namespace CodServerCache
         /// <summary>
         ///     Gets the port.
         /// </summary>
-        public int Port => (_data[_index + 0x09] << 8) + _data[_index + 0x08];
+        public int Port => (_data[_index + 0x08] << 8) + _data[_index + 0x09];
 
         /// <summary>
         ///     Gets the ping.
         /// </summary>
-        public int Ping => (_data[_index + 0x2B] << 8) + _data[_index + 0x2A];
+        public int Ping => (_data[_index + 0x2A] << 8) + _data[_index + 0x2B];
 
         /// <summary>
         ///     Gets the map.
