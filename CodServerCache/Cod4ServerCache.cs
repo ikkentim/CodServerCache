@@ -26,16 +26,16 @@ namespace CodServerCache
     /// </summary>
     public class Cod4ServerCache
     {
-        public const int ServerSize = 0x9c; //156
-        private const int HeaderSize = 0x10;
-        private const int FileSize = 0x2fe990; //3 139 984 (- 16 == 20 128)
-        private const int FavoritesOffset = 0x2f9b90; //3 120 016 (- 16 == 20 000)
-        private const int ServerCount = (FavoritesOffset - HeaderSize)/ServerSize;
-        private const int FavoriteServerCount = (FileSize - FavoritesOffset)/ServerSize;
-        // fav sec 19968 (== 128 x struct)
+        private const int FileSize = 0x2fe990;
+        private const int PublicServerOffset = 0x10;
+        private const int PublicServerCount = (FavoriteServerOffset - PublicServerOffset) / Cod4CachedServer.Size;
+        private const int FavoriteServerOffset = 0x2f9b90;
+        private const int FavoriteServerCount = (FileSize - FavoriteServerOffset) / Cod4CachedServer.Size;
 
-        private readonly byte[] _contents;
+        private readonly byte[] _data;
 
+        public IEnumerable<byte> Header => _data.Take(PublicServerOffset);
+         
         /// <summary>
         ///     Initializes a new instance of the <see cref="Cod4ServerCache" /> class.
         /// </summary>
@@ -50,7 +50,7 @@ namespace CodServerCache
             if (contents.Length != FileSize) throw new ArgumentException("invalid file size", nameof(path));
 
             Path = path;
-            _contents = contents;
+            _data = contents;
         }
 
         /// <summary>
@@ -59,34 +59,22 @@ namespace CodServerCache
         public string Path { get; }
 
         /// <summary>
-        ///     Gets the servers.
+        ///     Gets the public servers.
         /// </summary>
-        public IEnumerable<Cod4Server> Servers => Split(HeaderSize, ServerCount).Select(ToServer).Distinct();
+        public IEnumerable<Cod4CachedServer> PublicServers
+            =>
+                Enumerable.Range(0, PublicServerCount)
+                    .Select(index => new Cod4CachedServer(_data, PublicServerOffset + index*Cod4CachedServer.Size))
+                    .Where(server => !server.IsPinged);
 
         /// <summary>
         ///     Gets the favorite servers.
         /// </summary>
-        public IEnumerable<Cod4Server> FavoriteServers
-            => Split(FavoritesOffset, FavoriteServerCount).Select(ToServer).Distinct();
-
-        private IEnumerable<byte[]> Split(int startIndex, int count)
-        {
-            for (var i = 0; i < count; i++)
-            {
-                if (IsEmptyRecord(_contents, startIndex + ServerSize*i))
-                    continue;
-
-                yield return _contents.Skip(startIndex).Skip(ServerSize*i).Take(ServerSize).ToArray();
-            }
-        }
-
-        private static Cod4Server ToServer(byte[] data)
-        {
-            return new Cod4Server(GetString(data, 0x31, 0x20),
-                $"{string.Join(".", data.Skip(0x04).Take(0x04))}:{BitConverter.ToUInt16(data.Skip(0x08).Take(0x02).Reverse().ToArray(), 0)}",
-                GetString(data, 0x51, 0x20), GetString(data, 0x71, 0x18), GetString(data, 0x89, 0x13), data[0x19],
-                data[0x1a]);
-        }
+        public IEnumerable<Cod4CachedServer> FavoriteServers
+            =>
+                Enumerable.Range(0, Math.Min(FavoriteServerCount, (int)_data[0x08]))
+                    .Select(index => new Cod4CachedServer(_data, FavoriteServerOffset + index * Cod4CachedServer.Size))
+                    .Where(server => !server.IsPinged);
 
         /// <summary>
         ///     Detects the cache file of the installed copy of Call of Duty 4: Modern Warfare.
@@ -104,26 +92,6 @@ namespace CodServerCache
             path = System.IO.Path.Combine(path, "servercache.dat");
 
             return !File.Exists(path) ? null : new Cod4ServerCache(path);
-        }
-
-        private static bool IsEmptyRecord(byte[] data, int index)
-        {
-            return data.Length < index + ServerSize ||
-                   Enumerable.Range(0, ServerSize)
-                       .All(i => data[i + index] == (i == 27 ? 0x01 : (i == 42 || i == 43 ? 0xff : 0x00)));
-        }
-
-        private static string GetString(IEnumerable<byte> bytes, int index, int length)
-        {
-            var result = string.Empty;
-            foreach (var b in bytes.Skip(index).Take(length))
-            {
-                if (b == 0x00)
-                    return result;
-                result += (char) b;
-            }
-
-            return result;
         }
     }
 }

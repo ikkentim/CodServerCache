@@ -14,6 +14,8 @@
 // limitations under the License.
 
 using System;
+using System.IO;
+using System.Linq;
 
 namespace CodServerCache.Debugging
 {
@@ -23,8 +25,20 @@ namespace CodServerCache.Debugging
         {
             var cache = Cod4ServerCache.DetectCache();
 
-            foreach (var s in cache.FavoriteServers) Console.WriteLine(s);
+            Console.WriteLine($"0x{BitConverter.ToString(cache.Header.Take(0x31).ToArray()).Replace("-", "")}");
+            
+            using (var file = File.CreateText("C:/Users/Tim/Desktop/out.txt"))
+            {
+                file.WriteLine(
+                    $"  {string.Concat(Enumerable.Range(0, 0x31).Select(b => BitConverter.ToString(new[] {(byte) b})))}");
 
+                foreach (var server in cache.PublicServers)
+                {
+                    file.Write($"0x{BitConverter.ToString(server.Data.Take(0x31).ToArray()).Replace("-", "")}");
+                    file.WriteLine(server.Name + " " +server.Ip);
+                }
+            }
+            Console.WriteLine("OK");
             Console.ReadLine();
         }
     }
