@@ -88,7 +88,7 @@ namespace CodServerCache
         public byte MaxPlayers => _data[_index + 0x1a];
         
         /// <summary>
-        ///     Gets a value indicating whether this instance is an empty record.
+        ///     Gets a value indicating whether this instance has a valid ping.
         /// </summary>
         public bool IsPinged => Ping != 0xffff;// _data[_index + 0x1b] == 0x01;
 
